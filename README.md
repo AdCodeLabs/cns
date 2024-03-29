@@ -10,6 +10,11 @@ CLI NameSpace (CNS) is a GoLang-based CLI application designed to manage command
 
 ## Getting Started
 
+### Prerequisites
+
+- GoLang installed on your machine.
+- Basic knowledge of CLI operations.
+
 ### Installation
 
 1. **Compile the Application:**
@@ -37,7 +42,7 @@ CNS operations are simple and designed to be intuitive for the user:
 To start a new session, use:
 
 ```shell
-cns start _session_name_
+cns start __session_name__
 ```
 
 If the session name is not provided, CNS returns a list of existing sessions:
@@ -48,7 +53,7 @@ cns start
 
 Alternatively, to create a new session explicitly:
 ```shell
-cns create _session\_name_
+cns create __session_name__
 ```
 
 2. **List Commands:**
@@ -64,7 +69,7 @@ cns list
 - To execute a specific command by its ID:
 
 ```shell
-cns _id_
+cns __id__
 ```
 
 - To add and execute a new command, giving it a new ID automatically:
@@ -84,14 +89,14 @@ cns -i command_name command args
 - To delete a command by its ID:
 
 ```shell
-cns rm _id_
+cns rm __id__
 ```
 
 - To stop and delete a session:
 
 ```shell
 cns stop
-cns delete _session_name_
+cns delete __session_name__
 ```
 
 ## Contributing
