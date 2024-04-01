@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
+	"os"
 )
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "cns",
 	Short: "CLI NameSpace (CNS) is a GoLang-based CLI application designed to manage command sessions for users.",

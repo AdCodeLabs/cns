@@ -59,10 +59,20 @@ func (i *Install) windowsInstaller() error {
 	if _, err := os.Create(fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv")); err != nil {
 		return err
 	}
+	if _, err := os.Create(fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv")); err != nil {
+		return err
+	}
+
 	headers := []byte("session_id, session_name, created_at")
 	if err := os.WriteFile(fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"), headers, 0644); err != nil {
 		return err
 	}
+
+	headers = []byte("session_id, session_name, command")
+	if err := os.WriteFile(fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), headers, 0644); err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -10,16 +10,17 @@ import (
 )
 
 type Start struct {
-	OsType  string
 	homeDir string
 	cnsDir  string
+	args    []string
 }
 
-func NewStarter() *Start {
+func NewStarter(args []string) *Start {
 	homeDir, _ := os.UserHomeDir()
 	return &Start{
 		homeDir: homeDir,
 		cnsDir:  ".cns",
+		args:    args,
 	}
 }
 
@@ -39,11 +40,28 @@ func (s *Start) StartNewSession() error {
 		}
 	}()
 
-	queryString := fmt.Sprintf("INSERT INTO `%s` VALUES (3, 'DFS', 'EFW')", fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"))
-	_, err = db.ExecContext(ctx, queryString)
-	if err != nil {
+	checkIfExist := fmt.Sprintf("SELECT session_name FROM `%s` WHERE session_name = '%s'", fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"), s.args[0])
+	res := db.QueryRowContext(ctx, checkIfExist)
+	var tmpInt string
+	_ = res.Scan(&tmpInt)
+
+	if tmpInt == "" {
+		queryString := fmt.Sprintf("INSERT INTO `%s` VALUES (3, '%s', 'EFW')", fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"), s.args[0])
+		_, err = db.ExecContext(ctx, queryString)
+		if err != nil {
+			return err
+		}
+	}
+
+	if _, err := os.Create(fmt.Sprintf("%s/%s", cnsHomeDir, ".current")); err != nil {
 		return err
 	}
+
+	headers := []byte(s.args[0])
+	if err := os.WriteFile(fmt.Sprintf("%s/%s", cnsHomeDir, ".current"), headers, 0644); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -54,7 +72,7 @@ func (s *Start) ListSessions() error {
 
 	db, err := sql.Open("csvq", cnsHomeDir)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -65,7 +83,7 @@ func (s *Start) ListSessions() error {
 	queryString := fmt.Sprintf("SELECT session_id, session_name, created_at FROM `%s`", fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"))
 	rows, err := db.QueryContext(ctx, queryString)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
@@ -82,14 +100,13 @@ func (s *Start) ListSessions() error {
 
 	for rows.Next() {
 		if err := rows.Scan(&sessionId, &sessionName, &createdAt); err != nil {
-			panic(err) // Handle the error appropriately
+			return err
 		}
 		fmt.Printf("Result: [session_id]%3d  [session_name]%10s  [created_at]%3s\n", sessionId, sessionName, createdAt)
 	}
 
-	// Check for errors from iterating over rows
 	if err := rows.Err(); err != nil {
-		panic(err) // Handle the error appropriately
+		return err
 	}
 
 	return nil
