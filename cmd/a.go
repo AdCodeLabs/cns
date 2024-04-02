@@ -15,8 +15,20 @@ var aCmd = &cobra.Command{
 	DisableFlagParsing: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		homeDir, _ := os.UserHomeDir()
-		executor := internal.NewCommandExecutor(runtime.GOOS, homeDir, args)
-		executor.Execute()
+		var flag int
+		for idx, val := range args {
+			if val == "-i" {
+				flag = idx + 1
+			}
+		}
+		var executor *internal.CommandExecutor
+		if flag != 0 {
+			executor = internal.NewCommandExecutor(runtime.GOOS, homeDir, args[flag+1:])
+		} else {
+			executor = internal.NewCommandExecutor(runtime.GOOS, homeDir, args)
+		}
+
+		executor.Execute(args[flag])
 	},
 }
 

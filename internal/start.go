@@ -93,16 +93,15 @@ func (s *Start) ListSessions() error {
 	}(rows)
 
 	var (
-		sessionId   int
 		sessionName string
 		createdAt   string
 	)
 
 	for rows.Next() {
-		if err := rows.Scan(&sessionId, &sessionName, &createdAt); err != nil {
+		if err := rows.Scan(&sessionName, &createdAt); err != nil {
 			return err
 		}
-		fmt.Printf("Result: [session_id]%3d  [session_name]%10s  [created_at]%3s\n", sessionId, sessionName, createdAt)
+		fmt.Printf("Result: [session_name]%10s  [created_at]%3s\n", sessionName, createdAt)
 	}
 
 	if err := rows.Err(); err != nil {

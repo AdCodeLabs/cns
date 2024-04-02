@@ -28,7 +28,7 @@ func NewCommandExecutor(osType string, homeDir string, args []string) *CommandEx
 	}
 }
 
-func (c *CommandExecutor) Execute() {
+func (c *CommandExecutor) Execute(commandName string) {
 	switch c.osType {
 	case "windows":
 		c.windowsExecutor()
@@ -36,8 +36,8 @@ func (c *CommandExecutor) Execute() {
 		c.unixExecutor()
 	}
 	session := c.GetCurrentSession()
-	fmt.Println(session)
-	err := c.addCommandToDatabase(session)
+	fmt.Println(commandName)
+	err := c.addCommandToDatabase(session, commandName)
 	if err != nil {
 		return
 	}
@@ -105,7 +105,7 @@ func (c *CommandExecutor) GetCommandById(id string) *CommandExecutor {
 	return c
 }
 
-func (c *CommandExecutor) addCommandToDatabase(session string) error {
+func (c *CommandExecutor) addCommandToDatabase(session string, commandName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	cnsHomeDir := fmt.Sprintf("%s/%s", c.homeDir, c.cnsDir)
@@ -120,7 +120,22 @@ func (c *CommandExecutor) addCommandToDatabase(session string) error {
 		}
 	}()
 
-	queryString := fmt.Sprintf("INSERT INTO `%s` VALUES ('2', '%s', '%s')", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), session, c.args)
+	checkIfExist := fmt.Sprintf("SELECT command_id FROM `%s` WHERE command_id = '%s'", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), commandName)
+	checkingRes := db.QueryRowContext(ctx, checkIfExist)
+	var tmpInt string
+	_ = checkingRes.Scan(&tmpInt)
+
+	if tmpInt != "" {
+		return nil
+	}
+
+	var queryString string
+	if commandName == "" {
+		queryString = fmt.Sprintf("INSERT INTO `%s` VALUES ('2', '%s', '%s')", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), session, c.args)
+	} else {
+		queryString = fmt.Sprintf("INSERT INTO `%s` VALUES ('%s', '%s', '%s')", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), commandName, session, c.args)
+	}
+	fmt.Println(queryString)
 	res, err := db.ExecContext(ctx, queryString)
 	if err != nil {
 		return err
@@ -139,4 +154,13 @@ func (c *CommandExecutor) DestroySession() {
 		return
 	}
 	fmt.Println("stopped current session...")
+}
+
+func (c *CommandExecutor) UninstallCNS() {
+	cnsCurrent := fmt.Sprintf("%s/%s", c.homeDir, c.cnsDir)
+	err := os.RemoveAll(cnsCurrent)
+	if err != nil {
+		return
+	}
+	fmt.Println("uninstalled cns...")
 }
