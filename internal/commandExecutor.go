@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
@@ -33,7 +35,7 @@ func (c *CommandExecutor) Execute() {
 	case "unix":
 		c.unixExecutor()
 	}
-	session := c.getCurrentSession()
+	session := c.GetCurrentSession()
 	fmt.Println(session)
 	err := c.addCommandToDatabase(session)
 	if err != nil {
@@ -64,7 +66,7 @@ func (c *CommandExecutor) unixExecutor() {
 
 }
 
-func (c *CommandExecutor) getCurrentSession() string {
+func (c *CommandExecutor) GetCurrentSession() string {
 	current := fmt.Sprintf("%s/%s/.current", c.homeDir, c.cnsDir)
 	dat, err := os.ReadFile(current)
 	if err != nil {
@@ -72,6 +74,35 @@ func (c *CommandExecutor) getCurrentSession() string {
 		return ""
 	}
 	return string(dat)
+}
+
+func (c *CommandExecutor) GetCommandById(id string) *CommandExecutor {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cnsHomeDir := fmt.Sprintf("%s/%s", c.homeDir, c.cnsDir)
+
+	db, err := sql.Open("csvq", cnsHomeDir)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	queryString := fmt.Sprintf("SELECT command FROM `%s` WHERE command_id = '%s'", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), id)
+	rows := db.QueryRowContext(ctx, queryString)
+	var st string
+	err = rows.Scan(&st)
+	if err != nil {
+		log.Println(err)
+	}
+
+	trimmed := strings.Trim(st, "[]")
+	c.args = strings.Split(trimmed, " ")
+
+	return c
 }
 
 func (c *CommandExecutor) addCommandToDatabase(session string) error {
@@ -89,7 +120,7 @@ func (c *CommandExecutor) addCommandToDatabase(session string) error {
 		}
 	}()
 
-	queryString := fmt.Sprintf("INSERT INTO `%s` VALUES (3, '%s', '%s')", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), session, c.args)
+	queryString := fmt.Sprintf("INSERT INTO `%s` VALUES ('2', '%s', '%s')", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), session, c.args)
 	res, err := db.ExecContext(ctx, queryString)
 	if err != nil {
 		return err
@@ -97,4 +128,15 @@ func (c *CommandExecutor) addCommandToDatabase(session string) error {
 	fmt.Println(res)
 
 	return nil
+}
+
+//func (c *CommandExecutor) getLastCommandId() {}
+
+func (c *CommandExecutor) DestroySession() {
+	cnsCurrent := fmt.Sprintf("%s/%s/.current", c.homeDir, c.cnsDir)
+	err := os.Remove(cnsCurrent)
+	if err != nil {
+		return
+	}
+	fmt.Println("stopped current session...")
 }

@@ -46,7 +46,7 @@ func (s *Start) StartNewSession() error {
 	_ = res.Scan(&tmpInt)
 
 	if tmpInt == "" {
-		queryString := fmt.Sprintf("INSERT INTO `%s` VALUES (3, '%s', 'EFW')", fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"), s.args[0])
+		queryString := fmt.Sprintf("INSERT INTO `%s` VALUES ('%s', '%s')", fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"), s.args[0], time.Now())
 		_, err = db.ExecContext(ctx, queryString)
 		if err != nil {
 			return err
@@ -80,7 +80,7 @@ func (s *Start) ListSessions() error {
 		}
 	}()
 
-	queryString := fmt.Sprintf("SELECT session_id, session_name, created_at FROM `%s`", fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"))
+	queryString := fmt.Sprintf("SELECT session_name, created_at FROM `%s`", fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"))
 	rows, err := db.QueryContext(ctx, queryString)
 	if err != nil {
 		return err

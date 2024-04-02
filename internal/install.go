@@ -63,12 +63,12 @@ func (i *Install) windowsInstaller() error {
 		return err
 	}
 
-	headers := []byte("session_id, session_name, created_at")
+	headers := []byte("session_name, created_at")
 	if err := os.WriteFile(fmt.Sprintf("%s/%s", cnsHomeDir, "sessions.csv"), headers, 0644); err != nil {
 		return err
 	}
 
-	headers = []byte("session_id, session_name, command")
+	headers = []byte("command_id, session_name, command")
 	if err := os.WriteFile(fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), headers, 0644); err != nil {
 		return err
 	}

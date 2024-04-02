@@ -1,7 +1,8 @@
 package cmd
 
 import (
-	"fmt"
+	"github.com/AdCodeLabs/cns/internal"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -11,7 +12,9 @@ var listCmd = &cobra.Command{
 	Short: "List all commands inside this session",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("list called")
+		homedir, _ := os.UserHomeDir()
+		lister := internal.NewLister(homedir)
+		lister.ListCommands()
 	},
 }
 

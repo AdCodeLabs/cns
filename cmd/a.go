@@ -9,9 +9,10 @@ import (
 )
 
 var aCmd = &cobra.Command{
-	Use:   "a",
-	Short: "Run a command",
-	Long:  ``,
+	Use:                "a",
+	Short:              "Run a command",
+	Long:               ``,
+	DisableFlagParsing: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		homeDir, _ := os.UserHomeDir()
 		executor := internal.NewCommandExecutor(runtime.GOOS, homeDir, args)
