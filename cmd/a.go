@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"github.com/AdCodeLabs/cns/internal"
-	"os"
-	"runtime"
-
 	"github.com/spf13/cobra"
+	"log"
 )
 
 var aCmd = &cobra.Command{
@@ -14,7 +12,7 @@ var aCmd = &cobra.Command{
 	Long:               ``,
 	DisableFlagParsing: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		homeDir, _ := os.UserHomeDir()
+		manager := internal.NewCnsManager()
 		var flag int
 		for idx, val := range args {
 			if val == "-i" {
@@ -22,13 +20,21 @@ var aCmd = &cobra.Command{
 			}
 		}
 		var executor *internal.CommandExecutor
+		var err error
 		if flag != 0 {
-			executor = internal.NewCommandExecutor(runtime.GOOS, homeDir, args[flag+1:])
+			executor, err = internal.NewCommandExecutor(manager, args[flag+1:])
 		} else {
-			executor = internal.NewCommandExecutor(runtime.GOOS, homeDir, args)
+			executor, err = internal.NewCommandExecutor(manager, args)
 		}
 
-		executor.Execute(args[flag])
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		if err := executor.Execute(args[flag]); err != nil {
+			log.Println(err)
+		}
 	},
 }
 

@@ -5,10 +5,8 @@ package cmd
 
 import (
 	"github.com/AdCodeLabs/cns/internal"
-	"os"
-	"runtime"
-
 	"github.com/spf13/cobra"
+	"log"
 )
 
 // stopCmd represents the stop command
@@ -17,10 +15,10 @@ var stopCmd = &cobra.Command{
 	Short: "Stop the current session",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		osType := runtime.GOOS
-		homeDir, _ := os.UserHomeDir()
-		executor := internal.NewCommandExecutor(osType, homeDir, []string{})
+		manager := internal.NewCnsManager()
+		executor, _ := internal.NewCommandExecutor(manager, []string{})
 		executor.DestroySession()
+		log.Println("Destroyed current session...")
 	},
 }
 

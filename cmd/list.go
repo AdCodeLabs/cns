@@ -2,9 +2,8 @@ package cmd
 
 import (
 	"github.com/AdCodeLabs/cns/internal"
-	"os"
-
 	"github.com/spf13/cobra"
+	"log"
 )
 
 var listCmd = &cobra.Command{
@@ -12,8 +11,12 @@ var listCmd = &cobra.Command{
 	Short: "List all commands inside this session",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		homedir, _ := os.UserHomeDir()
-		lister := internal.NewLister(homedir)
+		manager := internal.NewCnsManager()
+		lister, err := internal.NewLister(manager)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 		lister.ListCommands()
 	},
 }

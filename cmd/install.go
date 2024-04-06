@@ -1,27 +1,26 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/AdCodeLabs/cns/internal"
-	"log"
-	"runtime"
-
 	"github.com/spf13/cobra"
+	"log"
 )
 
 var installCmd = &cobra.Command{
 	Use:   "install",
-	Short: "A brief description of your command",
+	Short: "Do `cns install` to use cns on your machine",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("install called")
-		os := runtime.GOOS
-		fmt.Println(os)
-		installer := internal.NewInstaller(os)
+		log.Println("Installing CNS on your System...")
+
+		manager := internal.NewCnsManager()
+		installer := internal.NewInstaller(manager)
+
 		if err := installer.Install(); err != nil {
 			log.Println(err)
 		}
-		fmt.Println("installation done")
+
+		log.Println("Installation Done...")
 	},
 }
 

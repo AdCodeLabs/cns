@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -13,34 +14,40 @@ import (
 )
 
 type CommandExecutor struct {
-	osType  string
-	homeDir string
-	cnsDir  string
-	args    []string
+	CnsManager *CnsManager
+	args       []string
 }
 
-func NewCommandExecutor(osType string, homeDir string, args []string) *CommandExecutor {
-	return &CommandExecutor{
-		osType:  osType,
-		homeDir: homeDir,
-		cnsDir:  ".cns",
-		args:    args,
+func NewCommandExecutor(CnsManager *CnsManager, args []string) (*CommandExecutor, error) {
+	if val := CnsManager.CheckInstallation(); !val {
+		return nil, errors.New("CNS is not installed...")
 	}
+
+	return &CommandExecutor{
+		CnsManager: CnsManager,
+		args:       args,
+	}, nil
 }
 
-func (c *CommandExecutor) Execute(commandName string) {
-	switch c.osType {
+func (c *CommandExecutor) Execute(commandName string) error {
+	session, _ := c.GetCurrentSession()
+	if session == "" {
+		return errors.New("Please start a session...")
+	}
+	switch c.CnsManager.OsType {
 	case "windows":
 		c.windowsExecutor()
 	case "unix":
 		c.unixExecutor()
 	}
-	session := c.GetCurrentSession()
-	fmt.Println(commandName)
-	err := c.addCommandToDatabase(session, commandName)
-	if err != nil {
-		return
+
+	if commandName != "execution_of_e" {
+		err := c.addCommandToDatabase(session, commandName)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (c *CommandExecutor) windowsExecutor() {
@@ -66,22 +73,20 @@ func (c *CommandExecutor) unixExecutor() {
 
 }
 
-func (c *CommandExecutor) GetCurrentSession() string {
-	current := fmt.Sprintf("%s/%s/.current", c.homeDir, c.cnsDir)
+func (c *CommandExecutor) GetCurrentSession() (string, error) {
+	current := fmt.Sprintf("%s/.current", c.CnsManager.CnsHomeDir)
 	dat, err := os.ReadFile(current)
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return "", err
 	}
-	return string(dat)
+	return string(dat), nil
 }
 
 func (c *CommandExecutor) GetCommandById(id string) *CommandExecutor {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	cnsHomeDir := fmt.Sprintf("%s/%s", c.homeDir, c.cnsDir)
 
-	db, err := sql.Open("csvq", cnsHomeDir)
+	db, err := sql.Open("csvq", c.CnsManager.CnsHomeDir)
 	if err != nil {
 		panic(err)
 	}
@@ -91,7 +96,7 @@ func (c *CommandExecutor) GetCommandById(id string) *CommandExecutor {
 		}
 	}()
 
-	queryString := fmt.Sprintf("SELECT command FROM `%s` WHERE command_id = '%s'", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), id)
+	queryString := fmt.Sprintf("SELECT command FROM `%s` WHERE command_id = '%s'", fmt.Sprintf("%s/%s", c.CnsManager.CnsHomeDir, "commands.csv"), id)
 	rows := db.QueryRowContext(ctx, queryString)
 	var st string
 	err = rows.Scan(&st)
@@ -108,9 +113,8 @@ func (c *CommandExecutor) GetCommandById(id string) *CommandExecutor {
 func (c *CommandExecutor) addCommandToDatabase(session string, commandName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	cnsHomeDir := fmt.Sprintf("%s/%s", c.homeDir, c.cnsDir)
 
-	db, err := sql.Open("csvq", cnsHomeDir)
+	db, err := sql.Open("csvq", c.CnsManager.CnsHomeDir)
 	if err != nil {
 		panic(err)
 	}
@@ -120,7 +124,7 @@ func (c *CommandExecutor) addCommandToDatabase(session string, commandName strin
 		}
 	}()
 
-	checkIfExist := fmt.Sprintf("SELECT command_id FROM `%s` WHERE command_id = '%s'", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), commandName)
+	checkIfExist := fmt.Sprintf("SELECT command_id FROM `%s` WHERE command_id = '%s'", fmt.Sprintf("%s/%s", c.CnsManager.CnsHomeDir, "commands.csv"), commandName)
 	checkingRes := db.QueryRowContext(ctx, checkIfExist)
 	var tmpInt string
 	_ = checkingRes.Scan(&tmpInt)
@@ -131,9 +135,9 @@ func (c *CommandExecutor) addCommandToDatabase(session string, commandName strin
 
 	var queryString string
 	if commandName == "" {
-		queryString = fmt.Sprintf("INSERT INTO `%s` VALUES ('2', '%s', '%s')", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), session, c.args)
+		queryString = fmt.Sprintf("INSERT INTO `%s` VALUES ('2', '%s', '%s')", fmt.Sprintf("%s/%s", c.CnsManager.CnsHomeDir, "commands.csv"), session, c.args)
 	} else {
-		queryString = fmt.Sprintf("INSERT INTO `%s` VALUES ('%s', '%s', '%s')", fmt.Sprintf("%s/%s", cnsHomeDir, "commands.csv"), commandName, session, c.args)
+		queryString = fmt.Sprintf("INSERT INTO `%s` VALUES ('%s', '%s', '%s')", fmt.Sprintf("%s/%s", c.CnsManager.CnsHomeDir, "commands.csv"), commandName, session, c.args)
 	}
 	fmt.Println(queryString)
 	res, err := db.ExecContext(ctx, queryString)
@@ -148,19 +152,17 @@ func (c *CommandExecutor) addCommandToDatabase(session string, commandName strin
 //func (c *CommandExecutor) getLastCommandId() {}
 
 func (c *CommandExecutor) DestroySession() {
-	cnsCurrent := fmt.Sprintf("%s/%s/.current", c.homeDir, c.cnsDir)
-	err := os.Remove(cnsCurrent)
+	err := os.Remove(fmt.Sprintf("%s/.current", c.CnsManager.CnsHomeDir))
 	if err != nil {
 		return
 	}
-	fmt.Println("stopped current session...")
 }
 
-func (c *CommandExecutor) UninstallCNS() {
-	cnsCurrent := fmt.Sprintf("%s/%s", c.homeDir, c.cnsDir)
-	err := os.RemoveAll(cnsCurrent)
+func (c *CommandExecutor) UninstallCNS() error {
+	err := os.RemoveAll(c.CnsManager.CnsHomeDir)
 	if err != nil {
-		return
+		return err
 	}
-	fmt.Println("uninstalled cns...")
+	log.Println("CNS is uninstalled...")
+	return nil
 }

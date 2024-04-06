@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"github.com/AdCodeLabs/cns/internal"
-	"os"
-	"runtime"
-
 	"github.com/spf13/cobra"
+	"log"
 )
 
 // eCmd represents the e command
@@ -14,10 +12,16 @@ var eCmd = &cobra.Command{
 	Short: "Execute a command by id",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		osType := runtime.GOOS
-		homeDir, _ := os.UserHomeDir()
-		executor := internal.NewCommandExecutor(osType, homeDir, []string{})
-		executor.GetCommandById(args[0]).Execute("")
+		manager := internal.NewCnsManager()
+		executor, err := internal.NewCommandExecutor(manager, []string{})
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		if err := executor.GetCommandById(args[0]).Execute("execution_of_e"); err != nil {
+			log.Println(err)
+		}
 	},
 }
 
